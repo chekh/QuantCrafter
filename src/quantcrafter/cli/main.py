@@ -17,18 +17,14 @@ def callback(ctx: typer.Context):
     else:
         logger.info(f"Запуск команды: {ctx.invoked_subcommand}")
 
-
-# Регистрация подкоманд
+# Подключаем подкоманды
 from quantcrafter.cli.commands.run import app as run_app
 # from quantcrafter.cli.commands.validate import app as validate_app
 from quantcrafter.cli.commands.plugins import app as plugins_app
-from quantcrafter.cli.commands.analytics import app as analytics_app
 
 app.add_typer(run_app, name="run", help="Запустить торговую стратегию")
 # app.add_typer(validate_app, name="validate", help="Проверить конфигурацию")
-app.add_typer(plugins_app, name="plugins", help="Список доступных плагинов")
-app.add_typer(analytics_app, name="analytics", help="Аналитика и отчёты")
-
+app.add_typer(plugins_app, name="plugins", help="Работа с плагинами")
 
 if __name__ == "__main__":
     app()
