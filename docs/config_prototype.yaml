@@ -1,0 +1,139 @@
+# Общие настройки
+general_settings:
+  strategy: MultyIndicatorsStrategy
+  log_level: info
+  start_deposit: 100000              # Начальный депозит
+  lot_size: 100_000                  # Размер лота конкретного инструмента
+  leverage: 0.01                     # Плечо брокера
+  pip_precision: 0.00001             # Точность пипса (5-й знак для EURUSD)
+  start_date: null                   # Начальная дата
+  end_date: null                     # Конечная дата
+  commission:      
+    type: fixed                      # Варианты: fixed, percent_by_trade, percent_by_volume, etc.
+    value: 0.0001                    # Комиссия брокера в процентах
+
+# Управление капиталом
+money_management:
+  method: anti-martingale            # Варианты: fixed, anti-martingale, by_balance, martingale
+  params:         
+    initial_volume: 0.1              # Начальный объем (например, 0.1 лота)
+    volume_multiplier: 2             # Множитель объема для увеличения объема сделки 
+    max_volume: 1.0                  # Максимальный объем
+    max_profitable_trades_in_row: 3  # Количество прибыльных сделок подряд, после чего сбрасываем объем
+  min_lot_step: 0.01                 # Минимальный шаг лота (например, 0.01 для EURUSD)
+  profit_withdrawal_period: monthly  # Варианты: monthly, quarterly
+  profit_withdrawal_rate: 0.5        # 50%
+
+# Управление рисками
+risk_management:
+  method: fixed_risk                 # Варианты: fixed_risk, percent_risk, dynamic_risk
+  params:       
+    risk_per_trade: 200              # USD
+    stop_loss_method: indicator_based  # Варианты: fixed, atr, indicator_based
+    sltp_units: pips
+    stop_loss: 50                      # Пипсы
+    atr_sltp_coef: 1.0
+  max_risk_per_deposit: 0.2          # 20%
+  max_drawdown: 0.1                  # 10%
+  check_free_margin: true            # Проверять ли баланс на свободном марже в процессе торговли
+
+# Исполнение сделок
+trade_execution:
+  execution_method: simple_reverse  # Варианты: market_orders, limit_orders, grid_trading, hedging, simple_reverse
+  params:
+    slippage_tolerance: 2  # Пункты
+    max_open_positions: 1  # Максимальное количество открытых позиций (для simple_reverse)
+
+# Индикаторы и советники (суть одино и то же)
+# Индикаторы используются для фильтров и для генерации сигналов
+indicators_and_advisors:
+  advisers_template: templates/advisors/multi_indicators.yaml  # Ссылка на шаблон с индикаторами
+  indicators:  # Дополнительные индикаторы, если нужны, можно описать прямо в этом конфиге
+    - name: "sma_10_1d"
+      type: "sma"
+      config:
+        warming_up_window: 10
+        period: 20
+        tf: "1D"
+        symbol: "EURUSD"
+        source: "MetaQuotes-Demo"
+
+# Фильтры (фильтры искпользуются для запрета исполнения основного сигнала стратегии, если не указан специальный параметр action)
+# Значения фильтров суммируются логически (AND), если не указано отрицание
+# Для работы фильтров нужны индикаторы или советники
+# Параметры фильтров устанавливают значения именно логики фильтрации, но не генерации сигналов советников/индикаторов
+# Фильтры
+filters:
+  enable_filters: true
+  groups:
+    block:
+      combine_logic: or  # Блокировать, если хотя бы один фильтр срабатывает
+      filters:
+        - filter_type: volatility_filter
+          params:
+            atr_threshold: 0.0005
+            atr_period: 14
+          invert: false
+        - filter_type: event_filter
+          params:
+            event_types: [non_farm_payroll, fomc]
+            avoid_minutes_before: 30
+            avoid_minutes_after: 30
+          invert: false
+    trade:
+      combine_logic: and  # Торговать, если все фильтры разрешают
+      filters:
+        - filter_type: trend_filter
+          params:
+            adx_threshold: 25
+            adx_period: 20
+          invert: false
+        - filter_type: time_filter
+          params:
+            allowed_hours: "06:00-22:00"
+          invert: false
+    reset_volume:
+      combine_logic: and
+      filters:
+        - filter_type: time_filter
+          params:
+            allowed_hours: "00:00-00:01"
+          invert: false
+
+# Торговый календарь
+trading_calendar:
+  calendar_template: no_trades_in_june  # Ссылка на шаблон календаря в конфиге calendar_config.yaml
+  use_stop_calendar: true               # Использовать ли календарь
+  exit_on_stop_calendar: false          # Выходить ли из позиции при наступлении запрета торговли по календарю
+
+# Сигналы для реализации торговли
+# Параметры генерации сигналов устанавливают значения именно логики генерации сигналов
+# Для работы генераторов нужны индикаторы или советники
+signals:
+  sources:
+    - type: file_based
+      params:
+        file_path: "signals/signals.csv"
+        format: { buy: 1, sell: -1, exit: 0 }
+  groups:
+    buy:
+      combine_logic: and
+      signals:
+        - source: file_based
+          condition: value == 1
+          invert: false
+    sell:
+      combine_logic: and
+      signals:
+        - source: file_based
+          condition: value == -1
+          invert: false
+    exit:
+      combine_logic: and
+      signals:
+        - source: file_based
+          condition: value == 0
+          invert: false
+  signals_template: file_based_reverse
+  entry_signal: file_based
+  exit_signal: file_based
