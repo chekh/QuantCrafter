@@ -1,0 +1,7 @@
+pytest>=7.0
+pytest-cov
+hypothesis
+mypy
+black
+isort
+pre-commit

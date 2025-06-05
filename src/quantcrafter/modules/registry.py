@@ -1,0 +1,8 @@
+# src/quantcrafter/modules/registry.py
+
+ADVISOR_REGISTRY = {}
+FILTER_REGISTRY = {}
+DATAPROVIDER_REGISTRY = {}
+EXECUTION_REGISTRY = {}
+VISUALIZER_REGISTRY = {}
+
